@@ -143,34 +143,40 @@ if __name__ == "__main__":
 	test_ids = build_set_of_sample_IDs(src_test_imgs)
 	DF = read_csv_data(src_annotations)
 
-	if MULTI_PROCESS and multiprocessing.cpu_count() > 3:
+
+	if MULTI_PROCESS:
 		cores = multiprocessing.cpu_count() - 1
 		train_ids = list(train_ids)
 		test_ids = list(test_ids)
 		split_idx_test = np.floor(len(test_ids) / cores).astype(np.uint32)
 		split_idx_train = np.floor(len(train_ids) / cores).astype(np.uint32)
 
-		batch1_test = test_ids[:split_idx_test].copy()
-		batch2_test = test_ids[split_idx_test:2*split_idx_test].copy()
-		batch3_test = test_ids[2*split_idx_test:].copy()
+	
+		processes = []
+		print('Running ' + str(cores) + ' processes')
+		for i in range(cores):
+			if (i < (cores - 1)):
+				batch_train_i = train_ids[i*split_idx_train : i*split_idx_train + split_idx_train]
+				batch_test_i = test_ids[i*split_idx_test : i*split_idx_test + split_idx_test]
+			else:
+				batch_train_i = train_ids[i*split_idx_train : ]
+				batch_test_i = test_ids[i*split_idx_test : ]
 
-		batch1_train = train_ids[:split_idx_train].copy()
-		batch2_train = train_ids[split_idx_train:2*split_idx_train].copy()
-		batch3_train = train_ids[2*split_idx_train:].copy()
-		
-		p1 = multiprocessing.Process(target=build_dataset, args=(batch1_train, batch1_test, DF.copy(),))
-		p2 = multiprocessing.Process(target=build_dataset, args=(batch2_train, batch2_test, DF.copy(),))
-		p3 = multiprocessing.Process(target=build_dataset, args=(batch3_train, batch3_test, DF.copy(),))
+			processes.append(multiprocessing.Process(target=build_dataset, args=(batch_train_i, batch_test_i, DF.copy(),)))
 
-		p1.start()
-		p2.start()
-		p3.start()
-		p1.join()
-		p2.join()
-		p3.join()
-		print('Finished generating new dataset')
+		for i in range(cores):
+			processes[i].start()
+
+		for i in range(cores):
+			processes[i].join()
+
+		print('Finished generating dataset')	
+
 
 	else:
+		print('Running 1 process')
 		build_dataset(train_ids, test_ids, DF)
-		print('Finished generating new dataset')
+		print('Finished generating dataset')	
 	
+	
+
