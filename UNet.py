@@ -128,7 +128,7 @@ class UNet(nn.Module):
 
             self.up_blocks.append(up_block)
 
-        self.conv_final = nn.Conv2d(n_filters_out, self.out_channels, kernel_size=3)
+        self.conv_final = nn.Conv2d(n_filters_out, self.out_channels, kernel_size=1)
 
     def forward(self, x):
         encoder_outputs = []
