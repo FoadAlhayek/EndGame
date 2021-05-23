@@ -17,10 +17,10 @@ Main script for training the classification stage
 '''
 
 # Paths
-mask_path = r'C:\Users\Kay\Desktop\ranzcr-data\Data_512\train_mask_512'
-img_path = r'C:\Users\Kay\Desktop\ranzcr-data\Data_512\train_512'
-labels_path = r'C:\Users\Kay\Desktop\ranzcr-data\Data_512\train.csv'
-annotations_path = r'C:\Users\Kay\Desktop\ranzcr-data\Data_512\train_annotations.csv'
+mask_path = r'C:\Users\Gnomechild\Desktop\ranzcr-data\Data_512\train_mask_512'
+img_path = r'C:\Users\Gnomechild\Desktop\ranzcr-data\Data_512\train_512'
+labels_path = r'C:\Users\Gnomechild\Desktop\ranzcr-data\Data_512\train.csv'
+annotations_path = r'C:\Users\Gnomechild\Desktop\ranzcr-data\Data_512\train_annotations.csv'
 
 # Parameters
 k_folds = 4
@@ -29,7 +29,7 @@ num_classes = 11
 batch_size = 10
 initial_lr = 1e-4
 architecture = 'efficientnet_b0'
-DEBUG = True
+DEBUG = False
 DEBUG_DATASET_SIZE = 100
 torch.manual_seed(1234)
 
@@ -71,9 +71,9 @@ def train(model_, optimizer_, criterion_, trainloader_, device_):
     train_loss = []
     model_.train()
     
+    # Zero out gradients
+    optimizer_.zero_grad()
     for batch_idx, (X_batch, y_batch) in enumerate(trainloader_):
-        # Zero out gradients
-        optimizer_.zero_grad()
         
         # Move batch to selected device
         X_batch, y_batch = X_batch.to(device_), y_batch.to(device_)
