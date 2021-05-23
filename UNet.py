@@ -267,7 +267,38 @@ if __name__ == '__main__':
                  out_channels=2,
                  n_blocks=4,
                  start_filters=32).to(device)
+    
+    print('Created UNET object')
 
+    #dl_train = torch.utils.data.DataLoader(dataset=dataset_train,
+    #                                               batch_size=2,
+    #                                               shuffle=True)
+
+    #dl_val = torch.utils.data.DataLoader(dataset=dataset_val,
+    #                                             batch_size=2,
+    #                                             shuffle=True)
+
+    # Initiate training
+    criterion = torch.nn.BCEWithLogitsLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    reduce_lr_OP = torch.optim.lr_scheduler.ReduceLROnPlateau
+    n_epochs = 30
+
+    # Create Trainer object
+    trainer = Trainer(model=model,
+                      device=device,
+                      criterion=criterion,
+                      optimizer=optimizer,
+                      train_DL=dl_train,
+                      val_DL=dl_val,
+                      lr_scheduler=reduce_lr_OP,
+                      epochs=n_epochs,
+                      print_out=True)
+    
+    print('Created Trainer object')
+
+    print('Started training')
+    train_loss, val_loss, lr_rates = trainer.run_trainer()
     print('Code finished')
 
     #summary(model, (1, 512, 512))
