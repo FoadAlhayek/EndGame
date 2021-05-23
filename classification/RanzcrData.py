@@ -13,7 +13,7 @@ class RanzcrDatasetClassification(Dataset):
     def __init__(self, labels, img_dir, mask_dir, ids, shuffle=True):
         self.img_dir = img_dir
         self.mask_dir = mask_dir
-        self.targets = labels
+        self.labels = labels
         self.id_set = ids
 
     def __len__(self):
@@ -27,6 +27,6 @@ class RanzcrDatasetClassification(Dataset):
         img[:,:,2] = mask[:,:,0]
 
         image = img.transpose(2, 0, 1) / 255.
-        label = np.array(labels.query('StudyInstanceUID' + f'== "{sample_id}"').values[0,1:-1], dtype=np.float32) # Extract the 11 targets
+        label = np.array(self.labels.query('StudyInstanceUID' + f'== "{sample_id}"').values[0,1:-1], dtype=np.float32) # Extract the 11 targets
         
         return torch.tensor(image).float(), torch.tensor(label).float()
