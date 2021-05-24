@@ -30,3 +30,27 @@ class RanzcrDatasetClassification(Dataset):
         label = np.array(self.labels.query('StudyInstanceUID' + f'== "{sample_id}"').values[0,1:-1], dtype=np.float32) # Extract the 11 targets
         
         return torch.tensor(image).float(), torch.tensor(label).float()
+
+class RanzcrDatasetSegmentation(Dataset):
+    def __init__(self, img_dir, mask_dir, ids, mode='train'):
+        self.img_dir = img_dir
+        self.mask_dir = mask_dir
+        self.id_set = ids
+        self.mode = mode
+
+    def __len__(self):
+        return len(self.id_set)
+    
+    def __getitem__(self, idx):
+        sample_id = self.id_set[idx]
+        img_path = os.path.join(self.img_dir, sample_id + '.jpg')
+        img = cv2.imread(img_path).astype(np.float32)
+        image = (img.transpose(2, 0, 1) / 255.)[0,:,:]
+        mask_path = os.path.join(self.mask_dir, sample_id + '.png')
+        mask = cv2.imread(mask_path).astype(np.float32)
+        mask = (mask.transpose(2, 0, 1) / 255.)[0:2,:,:]
+        
+        if self.mode == 'test':
+            return torch.tensor(image).float()
+        else:
+            return torch.tensor(image).unsqueeze(0).float(), torch.tensor(mask).float()
