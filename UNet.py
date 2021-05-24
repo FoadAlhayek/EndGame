@@ -1,6 +1,6 @@
 from torch import nn
 import torch
-from torchsummary import summary
+#from torchsummary import summary
 
 
 class ContractiveBlock(nn.Module):
@@ -128,7 +128,7 @@ class UNet(nn.Module):
 
             self.up_blocks.append(up_block)
 
-        self.conv_final = nn.Conv2d(n_filters_out, self.out_channels, kernel_size=3)
+        self.conv_final = nn.Conv2d(n_filters_out, self.out_channels, kernel_size=1)
 
     def forward(self, x):
         encoder_outputs = []
@@ -152,14 +152,153 @@ class UNet(nn.Module):
         return x
 
 
+class Trainer:
+    def __init__(self,
+                 model: torch.nn.Module,
+                 device: torch.device,
+                 criterion: torch.nn.Module,
+                 optimizer: torch.optim.Optimizer,
+                 train_DL: torch.utils.data.Dataset,
+                 val_DL: torch.utils.data.Dataset = None,
+                 lr_scheduler: torch.optim.lr_scheduler = None,
+                 epochs: int = 30,
+                 print_out: bool = True):
+        
+        self.model = model
+        self.device = device
+        self.criterion = criterion
+        self.optimizer = optimizer
+        self.train_DL = train_DL
+        self.val_DL = val_DL
+        self.lr_scheduler = lr_scheduler
+        self.epochs = epochs
+        self.epoch = 0
+        self.print_out = print_out
+
+        self.train_loss = []
+        self.val_loss = []
+        self.lr = []
+
+    
+    def _train(self):           # Underscore means "private method"
+        self.model.train()      # Swap to train mode
+        train_all_losses = []
+        
+        for i, (x, y) in enumerate(self.train_DL):
+            # Enable GPU|CPU
+            input = x.to(self.device)
+            target = y.to(self.device)
+
+            # Zero the gradient parameters
+            self.optimizer.zero_grad()
+            
+            # Forward pass
+            out = self.model(input)
+
+            # Compute loss and save
+            loss = self.criterion(out, target)
+            train_all_losses.append(loss.item())
+
+            # Backprog and update grads
+            loss.backward()
+            self.optimizer.step()
+            
+        # Average the train loss
+        self.train_loss.append(np.mean(train_loss))
+        self.lr.append(self.optimizer.param_groups[0]['lr'])
+    
+
+    def _val(self):         # Underscore means "private method"
+        self.model.eval()   # Swap to evaluation mode
+
+        val_all_losses = []
+
+        for i, (x, y) in enumerate(self.val_DL):
+            # Enable GPU|CPU
+            input = x.to(self.device)
+            target = y.to(self.device)
+
+            with torch.no_grad():   # Disable grad computation (not needed)
+                # Forward pass, compute and save the loss
+                out = self.model(input)
+                loss = self.criterion(out, target)
+                val_all_losses.append(loss.item())
+        
+        # Average the val loss
+        self.val_loss.append(np.mean(val_all_losses))
+    
+    def _lr(self, i):
+        if self.lr_scheduler is not None:
+            if self.val_DL is not None:
+                self.lr_scheduler.batch(self.val_loss[i])
+            else:
+                self.lr_scheduler.batch()
+            
+    
+
+    def run_trainer(self):
+        for i in range(self.epochs):
+            # Counter
+            self.epoch += 1
+            
+            if self.print_out:
+                print(f'Epoch: {self.epoch}/{self.epochs}')
+
+            # Run training
+            self._train()
+
+            # Run validation
+            if self.val_DL is not None:
+                self._val()
+            
+            # Run learning rate scheduler
+            self._lr(i)
+
+        return self.train_loss, self.val_loss, self.lr
+
+
 if __name__ == '__main__':
     # Check CUDA support
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    print(f'Using {device}')
 
     # Create UNET example:
     model = UNet(in_channels=1,
                  out_channels=2,
                  n_blocks=4,
                  start_filters=32).to(device)
+    
+    print('Created UNET object')
 
-    summary(model, (1, 512, 512))
+    #dl_train = torch.utils.data.DataLoader(dataset=dataset_train,
+    #                                               batch_size=2,
+    #                                               shuffle=True)
+
+    #dl_val = torch.utils.data.DataLoader(dataset=dataset_val,
+    #                                             batch_size=2,
+    #                                             shuffle=True)
+
+    # Initiate training
+    criterion = torch.nn.BCEWithLogitsLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    reduce_lr_OP = torch.optim.lr_scheduler.ReduceLROnPlateau
+    n_epochs = 30
+
+    # Create Trainer object
+    trainer = Trainer(model=model,
+                      device=device,
+                      criterion=criterion,
+                      optimizer=optimizer,
+                      train_DL=dl_train,
+                      val_DL=dl_val,
+                      lr_scheduler=reduce_lr_OP,
+                      epochs=n_epochs,
+                      print_out=True)
+    
+    print('Created Trainer object')
+
+    print('Started training')
+    train_loss, val_loss, lr_rates = trainer.run_trainer()
+    print('Code finished')
+
+    #summary(model, (1, 512, 512))
