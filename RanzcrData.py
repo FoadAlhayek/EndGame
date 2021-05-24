@@ -46,9 +46,10 @@ class RanzcrDatasetSegmentation(Dataset):
         img_path = os.path.join(self.img_dir, sample_id + '.jpg')
         img = cv2.imread(img_path).astype(np.float32)
         image = (img.transpose(2, 0, 1) / 255.)[0,:,:]
-        mask_path = os.path.join(self.mask_dir, sample_id + '.png')
-        mask = cv2.imread(mask_path).astype(np.float32)
-        mask = (mask.transpose(2, 0, 1) / 255.)[0:2,:,:]
+        if self.mode == 'train':
+            mask_path = os.path.join(self.mask_dir, sample_id + '.png')
+            mask = cv2.imread(mask_path).astype(np.float32)
+            mask = (mask.transpose(2, 0, 1) / 255.)[0:2,:,:]
         
         if self.mode == 'test':
             return torch.tensor(image).float()
